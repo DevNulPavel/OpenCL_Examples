@@ -18,6 +18,7 @@
 // https://habrahabr.ru/post/261323/
 // https://habrahabr.ru/post/124925/
 // https://ru.wikipedia.org/wiki/OpenCL
+// https://developer.apple.com/library/content/documentation/Performance/Conceptual/OpenCL_MacProgGuide/Introduction/Introduction.html
 
 ////////////////////////////////////////////////////////////////////////////////
 
