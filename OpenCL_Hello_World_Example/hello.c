@@ -40,6 +40,7 @@ const char* KernelSource = STRINGIFY(
         if(i < count){
             // Выполняем вычисление
             output[i] = (input[i] * input[i]);
+            output[i] += 0.5f;
         }
     }
 );
@@ -114,7 +115,7 @@ int main(int argc, char** argv) {
         exit(1);
     }
     for(size_t i = 0; i < DATA_SIZE; i++){
-        data[i] = rand() / (float)RAND_MAX;
+        data[i] = (float)((double)rand() / (double)RAND_MAX);
     }
     
     // Начало вычислений
@@ -129,8 +130,8 @@ int main(int argc, char** argv) {
     
     // Выставляем параметры для нашего вычислительного ядра
     unsigned int inputCount = DATA_SIZE;
-    err = 0;
-    err  = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
+    err = CL_SUCCESS;
+    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
     err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
     err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &inputCount);
     if (err != CL_SUCCESS) {
@@ -177,8 +178,15 @@ int main(int argc, char** argv) {
     // Проверяем результаты
     size_t correct = 0;
     for(size_t i = 0; i < DATA_SIZE; i++) {
-        if(results[i] == (data[i] * data[i])){
+        float resultVal = results[i];
+        float targetVal = (float)(data[i] * data[i]) + 0.5f;
+        if(fabsf(resultVal - targetVal) < 0.00000001){
             correct++;
+        }else{
+            printf("Error values %.10f != %.10f\n", resultVal, targetVal);
+            free(results);
+            free(data);
+            exit(1);
         }
     }
     
