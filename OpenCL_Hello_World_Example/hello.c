@@ -7,38 +7,51 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <OpenCL/opencl.h>
+
+#ifdef __APPLE__
+    #include <OpenCL/opencl.h>
+#else
+    #include <CL/cl.h>
+#endif
+
+
+// https://habrahabr.ru/post/261323/
+// https://habrahabr.ru/post/124925/
+// https://ru.wikipedia.org/wiki/OpenCL
 
 ////////////////////////////////////////////////////////////////////////////////
+
+#define STRINGIFY(_STR_) (#_STR_)
 
 // Размер данных
-#define DATA_SIZE (4096)
+#define DATA_SIZE ((1024*1024/sizeof(float)) * 512) // in Mb
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Вычислительное ядро для возведения в квадрат большого объема данных
-const char* KernelSource = "\n" \
-"__kernel void square(                                                  \n" \
-"   __global float* input,                                              \n" \
-"   __global float* output,                                             \n" \
-"   const unsigned int count)                                           \n" \
-"{                                                                      \n" \
-"   int i = get_global_id(0);                                           \n" \
-"   if(i < count)                                                       \n" \
-"       output[i] = input[i] * input[i];                                \n" \
-"}                                                                      \n" \
-"\n";
+const char* KernelSource = STRINGIFY(
+    // Вычислительное ядро для возведения в квадрат большого объема данных
+    __kernel void square(__global float* input,
+                         __global float* output,
+                         const unsigned int count)
+    {
+        // Получаем индекс в массиве
+        int i = get_global_id(0);
+        // Проверяем, что не вышли за границы
+        if(i < count){
+            // Выполняем вычисление
+            output[i] = (input[i] * input[i]);
+        }
+    }
+);
 
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char** argv) {
-    clock_t beginTime = clock();
-    
     int err = 0;                            // error code returned from api calls
     
     // Подключаем вычислительный девайс в виде GPU
     cl_device_id device_id = 0;             // compute device id
-    err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL); //  : CL_DEVICE_TYPE_CPU
+    err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL); // CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_CPU
     if (err != CL_SUCCESS) {
         printf("Error: Failed to create a device group!\n");
         return EXIT_FAILURE;
@@ -95,11 +108,17 @@ int main(int argc, char** argv) {
     }
     
     // Заполняем входные данные случайными значениями
-    float data[DATA_SIZE] = {0};
-    int i = 0;
-    for(i = 0; i < DATA_SIZE; i++){
+    float* data = malloc(sizeof(float) * DATA_SIZE);
+    if (data == NULL) {
+        printf("Error: Failed to allocate cpu src random memory!\n");
+        exit(1);
+    }
+    for(size_t i = 0; i < DATA_SIZE; i++){
         data[i] = rand() / (float)RAND_MAX;
     }
+    
+    // Начало вычислений
+    clock_t beginTime = clock();
     
     // Записываем наши данные в буффер на GPU
     err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * DATA_SIZE, data, 0, NULL, NULL);
@@ -140,26 +159,34 @@ int main(int argc, char** argv) {
     clFinish(commands);
 
     // Читаем данные из буффера устройства для проверки верности данных
-    float results[DATA_SIZE] = {0};
-    err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * DATA_SIZE, results, 0, NULL, NULL );
+    float* results = malloc(sizeof(float) * DATA_SIZE);
+    if (results == NULL) {
+        printf("Error: Failed to allocate cpu result memory!\n");
+        exit(1);
+    }
+    err = clEnqueueReadBuffer(commands, output, CL_TRUE, 0, sizeof(float) * DATA_SIZE, results, 0, NULL, NULL );
     if (err != CL_SUCCESS){
         printf("Error: Failed to read output array! %d\n", err);
         exit(1);
     }
     
+    // Время завершения вычислений
     clock_t endTime = clock();
     double timeSpent = (double)(endTime - beginTime) / CLOCKS_PER_SEC;
     
     // Проверяем результаты
-    unsigned int correct = 0;
-    for(i = 0; i < DATA_SIZE; i++) {
-        if(results[i] == data[i] * data[i]){
+    size_t correct = 0;
+    for(size_t i = 0; i < DATA_SIZE; i++) {
+        if(results[i] == (data[i] * data[i])){
             correct++;
         }
     }
     
+    free(results);
+    free(data);
+    
     // Выводим инфу
-    printf("Computed for %f, '%d/%d' correct values!\n", timeSpent, correct, DATA_SIZE);
+    printf("Computed for %f, '%ld/%ld' correct values, ok = %s!\n", timeSpent, correct, DATA_SIZE, (correct == DATA_SIZE) ? "true" : "false");
     
     // Чистим память
     clReleaseMemObject(input);

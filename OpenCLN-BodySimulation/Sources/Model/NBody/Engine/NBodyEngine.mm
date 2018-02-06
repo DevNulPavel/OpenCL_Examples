@@ -1,24 +1,11 @@
-/*
- <codex>
- <import>NBodyEngine.h</import>
- </codex>
- */
-
-#pragma mark -
-#pragma mark Private - Headers
-
 #import <OpenGL/gl.h>
-
 #import "GLMConstants.h"
-
 #import "NBodyConstants.h"
 #import "NBodyButtons.h"
 #import "NBodyMeters.h"
-
 #import "NBodySimulationMediator.h"
 #import "NBodyPreferences.h"
 #import "NBodySimulationVisualizer.h"
-
 #import "NBodyEngine.h"
 
 static const size_t kMeterDefaultMaxFPS      = 120;
@@ -26,8 +13,7 @@ static const size_t kMeterDefaultMaxUpdates  = 120;
 static const size_t kMeterDefaultMaxPerf     = 1400;
 static const size_t kMeterDefaultMaxCPUUsage = 100;
 
-@implementation NBodyEngine
-{
+@implementation NBodyEngine {
 @private
     // Properties
     BOOL  _isResized;

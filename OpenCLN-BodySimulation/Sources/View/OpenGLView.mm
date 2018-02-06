@@ -1,12 +1,3 @@
-/*
- <codex>
- <import>OpenGLView.h</import>
- </codex>
- */
-
-#pragma mark -
-#pragma mark Private - Headers
-
 #import <iostream>
 #import <vector>
 
