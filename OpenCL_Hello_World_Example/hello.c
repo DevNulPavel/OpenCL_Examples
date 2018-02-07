@@ -191,12 +191,9 @@ int main(int argc, char** argv) {
         }
     }
     
-    free(results);
-    free(data);
-    
-    // Выводим инфу
-    printf("Computed for %f, '%ld/%ld' correct values, ok = %s!\n", timeSpent, correct, DATA_SIZE, (correct == DATA_SIZE) ? "true" : "false");
-    
+    // Выводим инфу по GPU
+    printf("Computed using OpenCL for %f, '%ld/%ld' correct values, ok = %s!\n", timeSpent, correct, DATA_SIZE, (correct == DATA_SIZE) ? "true" : "false");
+
     // Чистим память
     clReleaseMemObject(input);
     clReleaseMemObject(output);
@@ -204,6 +201,29 @@ int main(int argc, char** argv) {
     clReleaseKernel(kernel);
     clReleaseCommandQueue(commands);
     clReleaseContext(context);
+    
+    // Снова заполняем случайными значениями
+    for(size_t i = 0; i < DATA_SIZE; i++){
+        data[i] = (float)((double)rand() / (double)RAND_MAX);
+    }
+
+    // Время начала
+    beginTime = clock();
+    
+    // Вычисляем
+    for(size_t i = 0; i < DATA_SIZE; i++){
+        results[i] = data[i] * data[i] + 0.5f;
+    }
+    
+    // Время завершения вычислений
+    endTime = clock();
+    timeSpent = (double)(endTime - beginTime) / CLOCKS_PER_SEC;
+    
+    // Выводим инфу по CPU
+    printf("Computed using CPU for %f\n", timeSpent);
+    
+    free(results);
+    free(data);
 
     return 0;
 }
