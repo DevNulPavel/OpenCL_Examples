@@ -25,7 +25,7 @@
 #define STRINGIFY(_STR_) (#_STR_)
 
 // Размер данных
-#define DATA_SIZE ((1024*1024/sizeof(float)) * 512) // in Mb
+#define DATA_SIZE ((1024*1024/sizeof(float)) * 256) // in Mb
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -40,8 +40,9 @@ const char* KernelSource = STRINGIFY(
         // Проверяем, что не вышли за границы
         if(i < count){
             // Выполняем вычисление
-            output[i] = (input[i] * input[i]);
+            output[i] = (input[i] * input[count - i - 1]);
             output[i] += 0.5f;
+            output[i] /= 2.0f;
         }
     }
 );
@@ -126,6 +127,14 @@ int main(int argc, char** argv) {
         exit(1);
     }
     
+    // Получаем максимальный размер группы для выполнения ядра (макс. количество потоков по X,Y,Z в группе)
+    size_t local = 0;
+    err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
+    if (err != CL_SUCCESS) {
+        printf("Error: Failed to retrieve kernel work group info! %d\n", err);
+        exit(1);
+    }
+    
     // Начало вычислений
     clock_t beginTime = clock();
     
@@ -144,14 +153,6 @@ int main(int argc, char** argv) {
     err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &inputCount);
     if (err != CL_SUCCESS) {
         printf("Error: Failed to set kernel arguments! %d\n", err);
-        exit(1);
-    }
-
-    // Получаем максимальный размер группы для выполнения ядра (макс. количество потоков по X,Y,Z в группе)
-    size_t local = 0;
-    err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
-    if (err != CL_SUCCESS) {
-        printf("Error: Failed to retrieve kernel work group info! %d\n", err);
         exit(1);
     }
 
@@ -182,7 +183,7 @@ int main(int argc, char** argv) {
     size_t correct = 0;
     for(size_t i = 0; i < DATA_SIZE; i++) {
         float resultVal = results[i];
-        float targetVal = (float)(data[i] * data[i]) + 0.5f;
+        float targetVal = ((float)(data[i] * data[DATA_SIZE-i-1]) + 0.5f) / 2.0f;
         if(fabsf(resultVal - targetVal) < 0.00000001){
             correct++;
         }else{
@@ -214,7 +215,7 @@ int main(int argc, char** argv) {
     
     // Вычисляем
     for(size_t i = 0; i < DATA_SIZE; i++){
-        results[i] = data[i] * data[i] + 0.5f;
+        results[i] = (data[i] * data[DATA_SIZE-i-1] + 0.5f) / 2.0f;
     }
     
     // Время завершения вычислений
