@@ -119,6 +119,13 @@ int main(int argc, char** argv) {
         data[i] = (float)((double)rand() / (double)RAND_MAX);
     }
     
+    // Буффер с результатами
+    float* results = malloc(sizeof(float) * DATA_SIZE);
+    if (results == NULL) {
+        printf("Error: Failed to allocate cpu result memory!\n");
+        exit(1);
+    }
+    
     // Начало вычислений
     clock_t beginTime = clock();
     
@@ -161,11 +168,6 @@ int main(int argc, char** argv) {
     clFinish(commands);
 
     // Читаем данные из буффера устройства для проверки верности данных
-    float* results = malloc(sizeof(float) * DATA_SIZE);
-    if (results == NULL) {
-        printf("Error: Failed to allocate cpu result memory!\n");
-        exit(1);
-    }
     err = clEnqueueReadBuffer(commands, output, CL_TRUE, 0, sizeof(float) * DATA_SIZE, results, 0, NULL, NULL );
     if (err != CL_SUCCESS){
         printf("Error: Failed to read output array! %d\n", err);
