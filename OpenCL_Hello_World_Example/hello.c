@@ -45,6 +45,9 @@ inline float calculateFunction(float a, float b){
     result += a*a*0.3453 + b*0.45 + 0.355;
     result += a*a*0.45667 + b*0.547 + 0.35567;
     result += a*a*0.57 + b*0.457 + 0.34557;
+    
+    result += sin(a*a) * cos(b) / 0.56;
+    
     return result;
 }
 
@@ -62,6 +65,9 @@ const char* KernelSource = STRINGIFY(
          result += a*a*0.3453 + b*0.45 + 0.355;
          result += a*a*0.45667 + b*0.547 + 0.35567;
          result += a*a*0.57 + b*0.457 + 0.34557;
+         
+         result += sin(a*a) * cos(b) / 0.56;
+         
          return result;
      }
 
