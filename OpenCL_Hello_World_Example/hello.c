@@ -31,6 +31,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Чем больше объем вычислений - тем больше прирост от GPU
 inline float calculateFunction(float a, float b){
     float result = 0;
     result += a*a*0.45 + b*0.78 + 0.23;
@@ -38,19 +39,31 @@ inline float calculateFunction(float a, float b){
     result += a*a*0.57 + b*0.345 + 0.35;
     result += a*a*0.456 + b*0.3458 + 0.35;
     result += a*a*0.765 + b*0.34 + 0.345;
+    result += a*a*0.564 + b*0.675 + 0.35567;
+    result += a*a*0.57 + b*0.57 + 0.35567;
+    result += a*a*0.6735 + b*0.457 + 0.345567;
+    result += a*a*0.3453 + b*0.45 + 0.355;
+    result += a*a*0.45667 + b*0.547 + 0.35567;
+    result += a*a*0.57 + b*0.457 + 0.34557;
     return result;
 }
 
 const char* KernelSource = STRINGIFY(
-    float calculateFunction(float a, float b){
-        float result = 0;
-        result += a*a*0.45 + b*0.78 + 0.23;
-        result += a*a*0.53 + b*0.2318 + 0.756;
-        result += a*a*0.57 + b*0.345 + 0.35;
-        result += a*a*0.456 + b*0.3458 + 0.35;
-        result += a*a*0.765 + b*0.34 + 0.345;
-        return result;
-    }
+     float calculateFunction(float a, float b){
+         float result = 0;
+         result += a*a*0.45 + b*0.78 + 0.23;
+         result += a*a*0.53 + b*0.2318 + 0.756;
+         result += a*a*0.57 + b*0.345 + 0.35;
+         result += a*a*0.456 + b*0.3458 + 0.35;
+         result += a*a*0.765 + b*0.34 + 0.345;
+         result += a*a*0.564 + b*0.675 + 0.35567;
+         result += a*a*0.57 + b*0.57 + 0.35567;
+         result += a*a*0.6735 + b*0.457 + 0.345567;
+         result += a*a*0.3453 + b*0.45 + 0.355;
+         result += a*a*0.45667 + b*0.547 + 0.35567;
+         result += a*a*0.57 + b*0.457 + 0.34557;
+         return result;
+     }
 
     // Вычислительное ядро для возведения в квадрат большого объема данных
     __kernel void square(__global float* input,
