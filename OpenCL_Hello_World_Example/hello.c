@@ -26,10 +26,32 @@
 
 // Размер данных
 #define DATA_SIZE ((1024*1024/sizeof(float)) * 256) // in Mb
+#define CPU_TEST_COUNT 30
+#define GPU_TEST_COUNT 30
 
 ////////////////////////////////////////////////////////////////////////////////
 
+inline float calculateFunction(float a, float b){
+    float result = 0;
+    result += a*a*0.45 + b*0.78 + 0.23;
+    result += a*a*0.53 + b*0.2318 + 0.756;
+    result += a*a*0.57 + b*0.345 + 0.35;
+    result += a*a*0.456 + b*0.3458 + 0.35;
+    result += a*a*0.765 + b*0.34 + 0.345;
+    return result;
+}
+
 const char* KernelSource = STRINGIFY(
+    float calculateFunction(float a, float b){
+        float result = 0;
+        result += a*a*0.45 + b*0.78 + 0.23;
+        result += a*a*0.53 + b*0.2318 + 0.756;
+        result += a*a*0.57 + b*0.345 + 0.35;
+        result += a*a*0.456 + b*0.3458 + 0.35;
+        result += a*a*0.765 + b*0.34 + 0.345;
+        return result;
+    }
+
     // Вычислительное ядро для возведения в квадрат большого объема данных
     __kernel void square(__global float* input,
                          __global float* output,
@@ -40,9 +62,7 @@ const char* KernelSource = STRINGIFY(
         // Проверяем, что не вышли за границы
         if(i < count){
             // Выполняем вычисление
-            output[i] = (input[i] * input[count - i - 1]);
-            output[i] += 0.5f;
-            output[i] /= 2.0f;
+            output[i] = calculateFunction(input[i], input[count - i - 1]);
         }
     }
 );
@@ -135,56 +155,61 @@ int main(int argc, char** argv) {
         exit(1);
     }
     
-    // Начало вычислений
-    clock_t beginTime = clock();
-    
-    // Записываем наши данные в буффер на GPU
-    err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * DATA_SIZE, data, 0, NULL, NULL);
-    if (err != CL_SUCCESS){
-        printf("Error: Failed to write to source array!\n");
-        exit(1);
+    double totalGPUTime = 0.0;
+    for (size_t i = 0; i < GPU_TEST_COUNT; i++) {
+        // Начало вычислений
+        clock_t beginTime = clock();
+        
+        // Записываем наши данные в буффер на GPU
+        err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(float) * DATA_SIZE, data, 0, NULL, NULL);
+        if (err != CL_SUCCESS){
+            printf("Error: Failed to write to source array!\n");
+            exit(1);
+        }
+        
+        // Выставляем параметры для нашего вычислительного ядра
+        unsigned int inputCount = DATA_SIZE;
+        err = CL_SUCCESS;
+        err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
+        err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
+        err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &inputCount);
+        if (err != CL_SUCCESS) {
+            printf("Error: Failed to set kernel arguments! %d\n", err);
+            exit(1);
+        }
+        
+        // Выполняем вычислительное ядро на указанном диапазоне одномерных входных данных,
+        // используя полученное максимальное количество потоков данного устройства
+        size_t global = DATA_SIZE;
+        err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+        if (err) {
+            printf("Error: Failed to execute kernel!\n");
+            return EXIT_FAILURE;
+        }
+        
+        // Ждем завершения выполнения комманд для получения результата
+        clFinish(commands);
+        
+        // Читаем данные из буффера устройства для проверки верности данных
+        err = clEnqueueReadBuffer(commands, output, CL_TRUE, 0, sizeof(float) * DATA_SIZE, results, 0, NULL, NULL);
+        if (err != CL_SUCCESS){
+            printf("Error: Failed to read output array! %d\n", err);
+            exit(1);
+        }
+        
+        // Время завершения вычислений
+        clock_t endTime = clock();
+        double timeSpent = (double)(endTime - beginTime) / CLOCKS_PER_SEC;
+        
+        totalGPUTime += timeSpent;
     }
-    
-    // Выставляем параметры для нашего вычислительного ядра
-    unsigned int inputCount = DATA_SIZE;
-    err = CL_SUCCESS;
-    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input);
-    err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
-    err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &inputCount);
-    if (err != CL_SUCCESS) {
-        printf("Error: Failed to set kernel arguments! %d\n", err);
-        exit(1);
-    }
-
-    // Выполняем вычислительное ядро на указанном диапазоне одномерных входных данных,
-    // используя полученное максимальное количество потоков данного устройства
-    size_t global = DATA_SIZE;
-    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
-    if (err) {
-        printf("Error: Failed to execute kernel!\n");
-        return EXIT_FAILURE;
-    }
-
-    // Ждем завершения выполнения комманд для получения результата
-    clFinish(commands);
-
-    // Читаем данные из буффера устройства для проверки верности данных
-    err = clEnqueueReadBuffer(commands, output, CL_TRUE, 0, sizeof(float) * DATA_SIZE, results, 0, NULL, NULL );
-    if (err != CL_SUCCESS){
-        printf("Error: Failed to read output array! %d\n", err);
-        exit(1);
-    }
-    
-    // Время завершения вычислений
-    clock_t endTime = clock();
-    double timeSpent = (double)(endTime - beginTime) / CLOCKS_PER_SEC;
     
     // Проверяем результаты
     size_t correct = 0;
     for(size_t i = 0; i < DATA_SIZE; i++) {
         float resultVal = results[i];
-        float targetVal = ((float)(data[i] * data[DATA_SIZE-i-1]) + 0.5f) / 2.0f;
-        if(fabsf(resultVal - targetVal) < 0.00000001){
+        float targetVal = calculateFunction(data[i], data[DATA_SIZE-i-1]);
+        if(fabsf(resultVal - targetVal) < 0.00001){
             correct++;
         }else{
             printf("Error values %.10f != %.10f\n", resultVal, targetVal);
@@ -195,7 +220,7 @@ int main(int argc, char** argv) {
     }
     
     // Выводим инфу по GPU
-    printf("Computed using OpenCL for %f, '%ld/%ld' correct values, ok = %s!\n", timeSpent, correct, DATA_SIZE, (correct == DATA_SIZE) ? "true" : "false");
+    printf("Computed using OpenCL for %f, '%ld/%ld' correct values, ok = %s!\n", totalGPUTime/(double)GPU_TEST_COUNT, correct, DATA_SIZE, (correct == DATA_SIZE) ? "true" : "false");
 
     // Чистим память
     clReleaseMemObject(input);
@@ -209,21 +234,28 @@ int main(int argc, char** argv) {
     for(size_t i = 0; i < DATA_SIZE; i++){
         data[i] = (float)((double)rand() / (double)RAND_MAX);
     }
-
-    // Время начала
-    beginTime = clock();
     
-    // Вычисляем
-    for(size_t i = 0; i < DATA_SIZE; i++){
-        results[i] = (data[i] * data[DATA_SIZE-i-1] + 0.5f) / 2.0f;
+    double totalCPUTime = 0.0;
+    for (size_t i = 0; i < CPU_TEST_COUNT; i++) {
+        // Время начала
+        clock_t beginTime = clock();
+        
+        // Вычисляем
+        for(size_t i = 0; i < DATA_SIZE; i++){
+            results[i] = calculateFunction(data[i], data[DATA_SIZE-i-1]);
+        }
+        
+        // Время завершения вычислений
+        clock_t endTime = clock();
+        double timeSpent = (double)(endTime - beginTime) / CLOCKS_PER_SEC;
+        
+        totalCPUTime += timeSpent;
     }
     
-    // Время завершения вычислений
-    endTime = clock();
-    timeSpent = (double)(endTime - beginTime) / CLOCKS_PER_SEC;
-    
     // Выводим инфу по CPU
-    printf("Computed using CPU for %f\n", timeSpent);
+    printf("Computed using CPU for %f\n", totalCPUTime/(double)CPU_TEST_COUNT);
+    
+    printf("GPU faster then CPU in X%f times \n", (float)(totalCPUTime/totalGPUTime));
     
     free(results);
     free(data);

@@ -110,7 +110,9 @@ __kernel void TestKernel(
     int iJob = get_global_id(0);
 
     // Делаем проверку выхода за границы
-    if (iJob >= elementsNumber) return; 
+    if (iJob >= elementsNumber) {
+        return;
+    }
 
     // Вычисление
     pOutputVectorHost[iJob] = MathCalculations(pInputVector1[iJob], pInputVector2[iJob]);
