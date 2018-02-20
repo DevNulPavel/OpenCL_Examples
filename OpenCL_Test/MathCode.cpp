@@ -1,7 +1,6 @@
 #include "MathCode.h"
 
-float MathCalculations(float a, float b)
-{
+float MathCalculations(float a, float b) {
 	float res = 0;
     res += a*a*0.315f + b*0.512f + 0.789f;
     res += a*a*0.15f + b*0.12f + 0.789f;

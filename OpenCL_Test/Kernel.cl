@@ -1,4 +1,3 @@
-//OpenCL Demo application made by Dmytro Konobrytskyi 2012
 
 float MathCalculations(float a, float b) {
     float res = 0;
@@ -107,12 +106,12 @@ __kernel void TestKernel(
 	__global float* pOutputVectorHost, 
 	int elementsNumber)
 {
-    //Get index into global data array
+    // Получаем индекс в массиве
     int iJob = get_global_id(0);
 
-    //Check boundary conditions
+    // Делаем проверку выхода за границы
     if (iJob >= elementsNumber) return; 
 
-    //Perform calculations
+    // Вычисление
     pOutputVectorHost[iJob] = MathCalculations(pInputVector1[iJob], pInputVector2[iJob]);
 }
