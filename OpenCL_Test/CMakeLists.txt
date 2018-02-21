@@ -51,6 +51,11 @@ else()
     message(FATAL_ERROR "OpenCL lib not found!")
 endif()
 
+# Системные библиотеки
+if (UNIX AND NOT APPLE)
+	set(SYSTEM_LIBRARIES pthread m)
+endif()
+
 
 ####################################################
 # Настройка сборки текущего проекта
@@ -72,8 +77,8 @@ endif ()
 if (UNIX AND NOT APPLE)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -O0 -Wall -g")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -Wall -g -stdlib=libc++ -std=c++11")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -Wall -stdlib=libc++ -std=c++11")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -Wall -g -std=c++11")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -Wall -std=c++11")
 endif ()
 if (MSYS)
 	# микрософту не нужен флаг -std=c++11
@@ -142,6 +147,6 @@ endif()
 
 # Библиотеки, с которыми будем ликовать
 # link_directories(${LIBS_LINK_FOLDERS})
-target_link_libraries (${EXECUTABLE_NAME} ${LIBS_LINK_NAMES})
+target_link_libraries (${EXECUTABLE_NAME} ${LIBS_LINK_NAMES} ${SYSTEM_LIBRARIES})
 
 

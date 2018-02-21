@@ -49,6 +49,11 @@ else()
 	message(FATAL_ERROR "OpenCL lib not found!")
 endif()
 
+# Системные библиотеки
+if (UNIX AND NOT APPLE)
+	set(SYSTEM_LIBRARIES m)
+endif()
+
 
 ####################################################
 # Настройка сборки текущего проекта
@@ -110,4 +115,4 @@ set_target_properties(${EXECUTABLE_NAME}
 )
 
 # Библиотеки, с которыми будем ликовать
-target_link_libraries(${EXECUTABLE_NAME} ${LIBS_LINK_NAMES})
+target_link_libraries(${EXECUTABLE_NAME} ${LIBS_LINK_NAMES} ${SYSTEM_LIBRARIES})

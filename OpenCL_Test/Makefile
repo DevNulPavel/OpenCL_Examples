@@ -5,10 +5,10 @@
 OUT_GPU=OpenCL_Test
 
 # Library Linux
-# OPEN_CL_LIBRARY="-l OpenCL"
+COMPILE_FLAGS=-O2 -std=gnu++14 -L/usr/lib/x86_64-linux-gnu/ -lOpenCL -lm -lpthread
 
 # Library OSX
-COMPILE_FLAGS=-O2 -std=gnu++14 -stdlib=libc++ -framework opencl
+# COMPILE_FLAGS=-O2 -std=gnu++14 -stdlib=libc++ -framework opencl
 
 
 all: MathCode.o main.o
