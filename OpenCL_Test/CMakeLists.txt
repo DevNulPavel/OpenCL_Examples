@@ -88,11 +88,11 @@ if (MSYS)
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} /O2 /Wall")
 endif ()
 if (WIN32)
-    # микрософту не нужен флаг -std=c++11??
+    # микрософту не нужен флаг -std=c++11 +  -stdlib=libc++??
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -O0 -Wall -g -std=c99")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall -std=c99")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -Wall -g -std=c++11 -stdlib=libc++")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -Wall -std=c++11 -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -Wall -g -std=c++11")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -Wall -std=c++11")
 endif ()
 
 # Вывод информации о настройке копиляции (Функция в CMake/Helpers.cmake)
@@ -102,8 +102,9 @@ print_current_cmake_config()
 ####################################################
 # Исходники
 ####################################################
-set(ALL_SOURCES Kernel.cl CL.hpp main.cpp MathCode.h MathCode.cpp)
-source_group("Sources" FILES ${ALL_SOURCES})
+set(ALL_SOURCES CL.hpp main.cpp MathCode.h MathCode.cpp)
+set(EDIT_SOURCES Kernel.cl CL.hpp main.cpp MathCode.h MathCode.cpp)	# Чтобы отображалось в исходниках
+source_group("Sources" FILES ${EDIT_SOURCES})
 
 # тип сборки
 if(NOT CMAKE_BUILD_TYPE)
@@ -128,12 +129,14 @@ set_target_properties( ${EXECUTABLE_NAME}
 # Создаем символьную ссылку на файлик .cl
 if (WIN32)
     string(REGEX REPLACE "/" "\\\\" SOURCE_RES_PATH "${CMAKE_SOURCE_DIR}/Kernel.cl")
-    string(REGEX REPLACE "/" "\\\\" RESULT_RES_PATH "${CMAKE_BINARY_DIR}/Kernel.cl")
+    string(REGEX REPLACE "/" "\\\\" RESULT_RES_PATH "${CMAKE_BINARY_DIR}")
+	string(REGEX REPLACE "/" "\\\\" RESULT_FILE_PATH "${CMAKE_BINARY_DIR}/Kernel.cl")
     message("COPY Kernel.cl COMMAND: xcopy ${SOURCE_RES_PATH} ${RESULT_RES_PATH} /y")
     add_custom_command (
         TARGET ${EXECUTABLE_NAME}
         POST_BUILD
-        COMMAND xcopy ${SOURCE_RES_PATH} ${RESULT_RES_PATH} /y
+		COMMAND del /F "${RESULT_FILE_PATH}"
+        COMMAND xcopy "${SOURCE_RES_PATH}" "${RESULT_RES_PATH}"
     )
 else()
     add_custom_command (
