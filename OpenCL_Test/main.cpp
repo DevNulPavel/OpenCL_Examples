@@ -147,7 +147,11 @@ void PerformCalculationsOnHostSTDThread() {
     // Обнуляем счетчики
     timeValues.clear();
     
+#ifdef _MSC_VER
+    int threadsNumber = max(unsigned(1), std::thread::hardware_concurrency());
+#else
     int threadsNumber = std::max(unsigned(1), std::thread::hardware_concurrency());
+#endif // _MS
     cout << "Threads number: " << threadsNumber << endl << endl;
     int jobsPerThread = DATA_SIZE/threadsNumber;
     

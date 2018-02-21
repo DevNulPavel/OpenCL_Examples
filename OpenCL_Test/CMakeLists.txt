@@ -33,7 +33,7 @@ option(CMAKE_COLOR_MAKEFILE "Color makefile" ON)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 # Инициализация проекта
-project(${PROJECT_NAME} C CXX)
+project(${PROJECT_NAME})
 
 enable_testing()
 
@@ -89,10 +89,10 @@ if (MSYS)
 endif ()
 if (WIN32)
     # микрософту не нужен флаг -std=c++11??
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -O0 -Wall -g")
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -Wall -g -stdlib=libc++")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -Wall -stdlib=libc++")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -O0 -Wall -g -std=c99")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall -std=c99")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -O0 -Wall -g -std=c++11 -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -Wall -std=c++11 -stdlib=libc++")
 endif ()
 
 # Вывод информации о настройке копиляции (Функция в CMake/Helpers.cmake)

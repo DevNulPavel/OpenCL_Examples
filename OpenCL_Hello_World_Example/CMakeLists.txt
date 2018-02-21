@@ -31,7 +31,7 @@ option(CMAKE_COLOR_MAKEFILE "Color makefile" ON)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
 
 # Инициализация проекта
-project(${PROJECT_NAME} C)
+project(${PROJECT_NAME})
 
 enable_testing()
 
@@ -80,8 +80,8 @@ if (MSYS)
 endif ()
 if (WIN32)
     # микрософту не нужен флаг -std=c++11
-    set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -O0 -Wall -g")
-    set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall")
+    set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -O0 -Wall -g -std=c99")
+    set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -Wall -std=c99")
 endif ()
 
 # Вывод информации о настройке копиляции (Функция в CMake/Helpers.cmake)
