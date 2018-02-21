@@ -26,13 +26,13 @@
 
 // Размер данных
 #define DATA_SIZE ((1024*1024/sizeof(float)) * 256) // in Mb
-#define CPU_TEST_COUNT 30
+#define CPU_TEST_COUNT 10
 #define GPU_TEST_COUNT 30
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Чем больше объем вычислений - тем больше прирост от GPU
-inline float calculateFunction(float a, float b){
+float calculateFunction(float a, float b){
     float result = 0;
     result += a*a*0.45 + b*0.78 + 0.23;
     result += a*a*0.53 + b*0.2318 + 0.756;
