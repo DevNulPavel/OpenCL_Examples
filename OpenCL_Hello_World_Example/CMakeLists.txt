@@ -40,7 +40,7 @@ enable_testing()
 # Библиотеки в системе
 ####################################################
 message("******** System libs search ***********")
-# Библиотека PNG REQUIRED
+
 find_package(OpenCL)
 if(OpenCL_FOUND)
 	include_directories(${OpenCL_INCLUDE_DIRS})
