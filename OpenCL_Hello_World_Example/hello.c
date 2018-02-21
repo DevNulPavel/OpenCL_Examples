@@ -91,17 +91,38 @@ const char* KernelSource = STRINGIFY(
 int main(int argc, char** argv) {
     int err = 0;                            // error code returned from api calls
     
+	// Количество платформ
+	cl_uint numPlatforms = 0;
+	err = clGetPlatformIDs(0, NULL, &numPlatforms);
+	if(err != CL_SUCCESS) {
+        printf("Error: no platform ids 1!\n");
+        return EXIT_FAILURE;
+    }
+	if(numPlatforms == 0) {
+        printf("Error: no platform ids 2!\n");
+        return EXIT_FAILURE;
+    }
+	
+	cl_platform_id* ids = (cl_platform_id*)malloc(numPlatforms * sizeof(cl_platform_id));
+	err = clGetPlatformIDs(numPlatforms, ids, NULL);
+	if(err != CL_SUCCESS) {
+        printf("Error: no platform ids 3!\n");
+        return EXIT_FAILURE;
+    }
+	
     // Подключаем вычислительный девайс в виде GPU
     cl_device_id device_id = 0;             // compute device id
-    err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL); // CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_CPU
-    if (err != CL_SUCCESS) {
+    err = clGetDeviceIDs(ids[0], CL_DEVICE_TYPE_GPU, 1, &device_id, NULL); // CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_CPU
+    if(err != CL_SUCCESS) {
         printf("Error: Failed to create a device group!\n");
         return EXIT_FAILURE;
     }
-  
+
+    free(ids);
+
     // Создание вычислительного контекста
     cl_context context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
-    if (!context){
+    if(!context){
         printf("Error: Failed to create a compute context!\n");
         return EXIT_FAILURE;
     }

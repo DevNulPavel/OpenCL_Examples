@@ -2,3 +2,4 @@ gpu
 build
 *.o
 .DS_Store
+*.user
