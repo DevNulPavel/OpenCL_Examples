@@ -31,137 +31,114 @@ static const NSOpenGLPixelFormatAttribute kOpenGLAttribsLegacyDefault[4] =
     0
 };
 
-@implementation OpenGLView
-{
-    BOOL mbFullscreen;
+@implementation OpenGLView {
+    BOOL _fullscreen;
     
-    NSDictionary*    mpOptions;
-    NSOpenGLContext* mpContext;
-    NSTimer*         mpTimer;
+    NSDictionary* _options;
+    NSOpenGLContext* _context;
+    NSTimer* _timer;
     
-    NBodyEngine*      mpEngine;
-    NBodyPreferences* mpPrefs;
+    NBodyEngine* _engine;
+    NBodyPreferences* _prefs;
 
-    IBOutlet NSPanel* mpHUD;
+    IBOutlet NSPanel* _panelHUD;
 }
 
 #pragma mark -
 #pragma mark Private - Destructor
 
-- (void) _cleanUpOptions
-{
-    if(mpOptions)
-    {
-        [mpOptions release];
+- (void) cleanUpOptions {
+    if(_options){
+        [_options release];
+        _options = nil;
+    }
+}
+
+- (void) cleanUpTimer{
+    if(_timer){
+        [_timer invalidate];
+        [_timer release];
+    }
+}
+
+- (void) cleanUpPrefs {
+    if(_prefs){
+        [_prefs addEntries:_engine.preferences];
+
+        [_prefs write];
+        [_prefs release];
         
-        mpOptions = nil;
-    } // if
-} // _cleanUpOptions
+        _prefs = nil;
+    }
+}
 
-- (void) _cleanUpTimer
-{
-    if(mpTimer)
-    {
-        [mpTimer invalidate];
-        [mpTimer release];
-    } // if
-} // _cleanUpTimer
+- (void) cleanUpEngine{
+    if(_engine){
+        [_engine release];
+        _engine = nil;
+    }
+}
 
-- (void) _cleanUpPrefs
-{
-    if(mpPrefs)
-    {
-        [mpPrefs addEntries:mpEngine.preferences];
-
-        [mpPrefs write];
-        [mpPrefs release];
-        
-        mpPrefs = nil;
-    } // if
-} // _cleanUpEngine
-
-- (void) _cleanUpEngine
-{
-    if(mpEngine)
-    {
-        [mpEngine release];
-        
-        mpEngine = nil;
-    } // if
-} // _cleanUpEngine
-
-- (void) _cleanUpObserver
-{
+- (void) cleanUpObserver {
     // If self isn't removed as an observer, the Notification Center
     // will continue sending notification objects to the deallocated
     // object.
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-} // _cleanUpObserver
+}
 
 // Tear-down objects
-- (void) _cleanup
-{
-    [self _cleanUpOptions];
-    [self _cleanUpPrefs];
-    [self _cleanUpTimer];
-    [self _cleanUpEngine];
-    [self _cleanUpObserver];
-} // _cleanup
+- (void) cleanup {
+    [self cleanUpOptions];
+    [self cleanUpPrefs];
+    [self cleanUpTimer];
+    [self cleanUpEngine];
+    [self cleanUpObserver];
+}
 
 #pragma mark -
 #pragma mark Private - Utilities - Misc.
 
 // When application is terminating cleanup the objects
-- (void) _quit:(NSNotification *)notification
-{
-    [self  _cleanup];
-} // _quit
+- (void) quit:(NSNotification *)notification {
+    [self  cleanup];
+}
 
-- (void) _idle
-{
+- (void) idle {
     [self setNeedsDisplay:YES];
-} // _idle
+}
 
-- (void) _toggleFullscreen
-{
-    if(mpPrefs.fullscreen)
-    {
+- (void) toggleFullscreen {
+    if(_prefs.fullscreen){
         [self enterFullScreenMode:[NSScreen mainScreen]
-                      withOptions:mpOptions];
-    } // else
-} // _toggleFullscreen
+                      withOptions:_options];
+    }
+}
 
-- (void) _alert:(NSString *)pMessage
-{
-    if(pMessage)
-    {
+- (void) alert:(NSString *)pMessage{
+    if(pMessage){
         NSAlert* pAlert = [NSAlert new];
         
-        if(pAlert)
-        {
+        if(pAlert){
             [pAlert addButtonWithTitle:@"OK"];
             [pAlert setMessageText:pMessage];
             [pAlert setAlertStyle:NSCriticalAlertStyle];
             
             NSModalResponse response = [pAlert runModal];
             
-            if(response == NSAlertFirstButtonReturn)
-            {
+            if(response == NSAlertFirstButtonReturn){
                 NSLog(@">> MESSAGE: %@", pMessage);
-            } // if
+            }
             
             [pAlert release];
-        } // if
-    } // if
-} // _alert
+        }
+    }
+}
 
-- (BOOL) _query
-{
+- (BOOL) query {
     GLU::Query query;
     
     // NOTE: For OpenCL 1.2 support refer to <http://support.apple.com/kb/HT5942>
-    GLstrings keys =
-    {
+    GLstrings keys = {
          "120",   "130",  "285",  "320M",
         "330M", "X1800", "2400",  "2600",
         "3000",  "4670", "4800",  "4870",
@@ -173,318 +150,247 @@ static const NSOpenGLPixelFormatAttribute kOpenGLAttribsLegacyDefault[4] =
     std::cout << ">> N-body Simulation: Version  = \"" << query.version()  << "\"" << std::endl;
     
     return BOOL(query.match(keys));
-} // _query
+}
 
-- (NSOpenGLPixelFormat *) _newPixelFormat
-{
+- (NSOpenGLPixelFormat*) newPixelFormat {
     NSOpenGLPixelFormat* pFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:kOpenGLAttribsLegacyProfile];
-    
-    if(!pFormat)
-    {
+    if(!pFormat){
         NSLog(@">> WARNING: Failed to initialize an OpenGL context with the desired pixel format!");
         NSLog(@">> MESSAGE: Attempting to initialize with a fallback pixel format!");
         
         pFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:kOpenGLAttribsLegacyDefault];
-    } // if
-    
+    }
     return pFormat;
-} // _newPixelFormat
+}
 
-#pragma mark -
-#pragma mark Private - Utilities - Prepare
+#pragma mark - Private - Utilities - Prepare
 
-- (void) _preparePrefs
-{
-    mpPrefs = [NBodyPreferences new];
-    
-    if(mpPrefs)
-    {
-        mbFullscreen = mpPrefs.fullscreen;
-    } // if
-} // _preparePrefs
+- (void) preparePrefs {
+    _prefs = [NBodyPreferences new];
+    if(_prefs){
+        _fullscreen = _prefs.fullscreen;
+    }
+}
 
-- (void) _prepareNBody
-{
-    if([self _query])
-    {
-        [self _alert:@"Requires OpenCL 1.2!"];
+- (void) prepareNBody {
+    if([self query]){
+        [self alert:@"Requires OpenCL 1.2!"];
         
-        [self _cleanUpOptions];
-        [self _cleanUpTimer];
+        [self cleanUpOptions];
+        [self cleanUpTimer];
         
         exit(-1);
-    } // if
-    else
-    {
+    }else{
         NSRect frame = [[NSScreen mainScreen] frame];
         
-        mpEngine = [[NBodyEngine alloc] initWithPreferences:mpPrefs];
+        _engine = [[NBodyEngine alloc] initWithPreferences:_prefs];
         
-        if(mpEngine)
-        {
-            mpEngine.frame = frame;
-            
-            [mpEngine acquire];
-        } // if
-    } // else
-} // _prepareNBody
+        if(_engine){
+            _engine.frame = frame;
+            [_engine acquire];
+        }
+    }
+}
 
-- (void) _prepareRunLoop
-{
-    mpTimer = [[NSTimer timerWithTimeInterval:0.0
+- (void) prepareRunLoop {
+    _timer = [[NSTimer timerWithTimeInterval:0.0
                                        target:self
-                                     selector:@selector(_idle)
+                                     selector:@selector(idle)
                                      userInfo:self
                                       repeats:true] retain];
     
-    [[NSRunLoop currentRunLoop] addTimer:mpTimer
+    [[NSRunLoop currentRunLoop] addTimer:_timer
                                  forMode:NSRunLoopCommonModes];
-} // _prepareRunLoop
+}
 
-#pragma mark -
-#pragma mark Public - Designated Initializer
+#pragma mark - Public - Designated Initializer
 
-- (instancetype) initWithFrame:(NSRect)frameRect
-{
+- (instancetype) initWithFrame:(NSRect)frameRect {
     BOOL bIsValid = NO;
     
-    NSOpenGLPixelFormat* pFormat = [self _newPixelFormat];
+    NSOpenGLPixelFormat* pFormat = [self newPixelFormat];
     
-    if(pFormat)
-    {
+    if(pFormat) {
         self = [super initWithFrame:frameRect
                         pixelFormat:pFormat];
         
-        if(self)
-        {
-            mpContext = [self openGLContext];
-            bIsValid  = mpContext != nil;
+        if(self) {
+            _context = [self openGLContext];
+            bIsValid  = (_context != nil);
             
-            mpOptions = [[NSDictionary dictionaryWithObject:@(YES)
-                                                     forKey:NSFullScreenModeSetting] retain];
+            _options = [[NSDictionary dictionaryWithObject:@(YES)
+                                                    forKey:NSFullScreenModeSetting] retain];
             
             // It's important to clean up our rendering objects before we terminate -- Cocoa will
             // not specifically release everything on application termination, so we explicitly
             // call our cleanup (private object destructor) routines.
             [[NSNotificationCenter defaultCenter] addObserver:self
-                                                     selector:@selector(_quit:)
+                                                     selector:@selector(quit:)
                                                          name:@"NSApplicationWillTerminateNotification"
                                                        object:NSApp];
-        } // if
-        else
-        {
+        }else{
             NSLog(@">> ERROR: Failed to initialize an OpenGL context with attributes!");
-        } // else
+        }
         
         [pFormat release];
-    } // if
-    else
-    {
+    } else{
         NSLog(@">> ERROR: Failed to acquire a valid pixel format!");
-    } // else
+    }
     
-    if(!bIsValid)
-    {
+    if(!bIsValid){
         exit(-1);
-    } // if
+    }
     
     return self;
-} // initWithFrame
+}
 
-#pragma mark -
-#pragma mark Public - Destructor
+#pragma mark - Public - Destructor
 
-- (void) dealloc
-{
-    [self _cleanup];
+- (void) dealloc {
+    [self cleanup];
     
     [super dealloc];
-} // dealloc
+}
 
-#pragma mark -
-#pragma mark Public - Prepare
+#pragma mark - Public - Prepare
 
-- (void) prepareOpenGL
-{
+- (void) prepareOpenGL {
     [super prepareOpenGL];
     
-    [self _preparePrefs];
-    [self _prepareNBody];
-    [self _prepareRunLoop];
+    [self preparePrefs];
+    [self prepareNBody];
+    [self prepareRunLoop];
     
-    [self _toggleFullscreen];
-} // prepareOpenGL
+    [self toggleFullscreen];
+}
 
-#pragma mark -
-#pragma mark Public - Delegates
+#pragma mark - Public - Delegates
 
-- (BOOL) isOpaque
-{
+- (BOOL) isOpaque{
     return YES;
-} // isOpaque
+}
 
-- (BOOL) acceptsFirstResponder
-{
+- (BOOL) acceptsFirstResponder {
     return YES;
-} // acceptsFirstResponder
+}
 
-- (BOOL) becomeFirstResponder
-{
+- (BOOL) becomeFirstResponder{
     return  YES;
-} // becomeFirstResponder
+}
 
-- (BOOL) resignFirstResponder
-{
+- (BOOL) resignFirstResponder{
     return YES;
-} // resignFirstResponder
+}
 
-- (BOOL) applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)theApplication
-{
+- (BOOL) applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)theApplication{
     return YES;
-} // applicationShouldTerminateAfterLastWindowClosed
+}
 
-#pragma mark -
-#pragma mark Public - Updates
+#pragma mark - Public - Updates
 
-- (void) renewGState
-{
+- (void) renewGState{
     [super renewGState];
-    
     [[self window] disableScreenUpdatesUntilFlush];
-} // renewGState
+}
 
-#pragma mark -
-#pragma mark Public - Display
+#pragma mark - Public - Display
 
-- (void) _resize
-{
-    if(mpEngine)
-    {
+- (void) resize {
+    if(_engine){
         NSRect bounds = [self bounds];
         
-        [mpEngine resize:bounds];
-    } // if
-} // _resize
+        [_engine resize:bounds];
+    }
+}
 
-- (void) reshape
-{
-    [self _resize];
-} // reshape
+- (void) reshape {
+    [self resize];
+}
 
-- (void) drawRect:(NSRect)dirtyRect
-{
-    [mpEngine draw];
-} // drawRect
+- (void) drawRect:(NSRect)dirtyRect {
+    [_engine draw];
+}
 
-#pragma mark -
-#pragma mark Public - Help
+#pragma mark - Public - Help
 
-- (IBAction) toggleHelp:(id)sender
-{
-    if([mpHUD isVisible])
-    {
-        [mpHUD orderOut:sender];
-    } // if
-    else
-    {
-        [mpHUD makeKeyAndOrderFront:sender];
-    } // else
-} // toggleHelp
+- (IBAction) toggleHelp:(id)sender {
+    if([_panelHUD isVisible]){
+        [_panelHUD orderOut:sender];
+    } else {
+        [_panelHUD makeKeyAndOrderFront:sender];
+    }
+}
 
-#pragma mark -
-#pragma mark Public - Fullscreen
+#pragma mark - Public - Fullscreen
 
-- (IBAction) toggleFullscreen:(id)sender
-{
-    if([self isInFullScreenMode])
-    {
-        [self exitFullScreenModeWithOptions:mpOptions];
-        
+- (IBAction) toggleFullscreen:(id)sender {
+    if([self isInFullScreenMode]){
+        [self exitFullScreenModeWithOptions:_options];
         [[self window] makeFirstResponder:self];
-        
-        mpPrefs.fullscreen = NO;
-    } // if
-    else
-    {
+        _prefs.fullscreen = NO;
+    }else{
         [self enterFullScreenMode:[NSScreen mainScreen]
-                      withOptions:mpOptions];
-        
-        
-        mpPrefs.fullscreen = YES;
-    } // else
-} // toggleFullscreen
+                      withOptions:_options];
+        _prefs.fullscreen = YES;
+    }
+}
 
 #pragma mark -
 #pragma mark Public - Keys
 
-- (void) keyDown:(NSEvent *)event
-{
-    if(event)
-    {
+- (void) keyDown:(NSEvent *)event {
+    if(event){
         NSString* pChars = [event characters];
         
-        if([pChars length])
-        {
+        if([pChars length]) {
             unichar key = [[event characters] characterAtIndex:0];
             
-            if(key == 27)
-            {
+            if(key == 27) {
                 [self toggleFullscreen:self];
-            } // if
-            else
-            {
-                mpEngine.command = key;
-            } // else
-        } // if
-    } // if
-} // keyDown
+            } else{
+                _engine.command = key;
+            }
+        }
+    }
+}
 
-- (void) mouseDown:(NSEvent *)event
-{
-    if(event)
-    {
+- (void) mouseDown:(NSEvent *)event {
+    if(event){
         NSPoint where  = [event locationInWindow];
         NSRect  bounds = [self bounds];
         NSPoint point  = NSMakePoint(where.x, bounds.size.height - where.y);
         
-        [mpEngine click:NBody::Mouse::Button::kDown
+        [_engine click:NBody::Mouse::Button::kDown
                   point:point];
-    } // if
-} // mouseDown
+    }
+}
 
-- (void) mouseUp:(NSEvent *)event
-{
-    if(event)
-    {
+- (void) mouseUp:(NSEvent *)event {
+    if(event){
         NSPoint where  = [event locationInWindow];
         NSRect  bounds = [self bounds];
         NSPoint point  = NSMakePoint(where.x, bounds.size.height - where.y);
         
-        [mpEngine click:NBody::Mouse::Button::kUp
+        [_engine click:NBody::Mouse::Button::kUp
                   point:point];
-    } // if
-} // mouseUp
+    }
+}
 
-- (void) mouseDragged:(NSEvent *)event
-{
-    if(event)
-    {
+- (void) mouseDragged:(NSEvent *)event {
+    if(event){
         NSPoint where = [event locationInWindow];
         
         where.y = 1080.0f - where.y;
         
-        [mpEngine move:where];
-    } // if
-} // mouseDragged
+        [_engine move:where];
+    }
+}
 
-- (void) scrollWheel:(NSEvent *)event
-{
-    if(event)
-    {
+- (void) scrollWheel:(NSEvent *)event{
+    if(event){
         CGFloat dy = [event deltaY];
-        
-        [mpEngine scroll:dy];
-    } // if
-} // scrollWheel
+        [_engine scroll:dy];
+    }
+}
 
 @end
