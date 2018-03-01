@@ -55,37 +55,32 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
     NBody::Simulation::Visualizer* mpVisualizer;
 }
 
-#pragma mark -
-#pragma mark Private - Utiltites - Scene
+#pragma mark - Private - Utiltites - Scene
 
-- (void) _reset
-{
+- (void) reset{
     mpVisualizer->stopRotation();
     mpVisualizer->setRotationSpeed(0.0f);
     
     mpMediator->reset();
     mpVisualizer->reset(_activeDemo);
-} // _reset
+}
 
-- (void) _restart
-{
+- (void) restart{
     mpVisualizer->setViewRotation(m_Rotation);
     mpVisualizer->setViewZoom(_viewDistance);
     mpVisualizer->setViewTime(0.0f);
     mpVisualizer->setIsResetting(YES);
     mpVisualizer->stopRotation();
-} // _restart
+}
 
-- (void) _nextSimulator
-{
+- (void)nextSimulator{
     mbIsWaiting = YES;
     
     mnSimulatorIndex++;
     
-    if(mnSimulatorIndex >= mnSimulatorCount)
-    {
+    if(mnSimulatorIndex >= mnSimulatorCount){
         mnSimulatorIndex = 0;
-    } // if
+    }
     
     mpMediator->pause();
     mpMediator->select(mnSimulatorIndex);
@@ -94,51 +89,43 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
     mpButtons.index      = mnSimulatorIndex;
     mpButtons.size       = _size;
     mpButtons.isSelected = YES;
-} // _nextSimulator
+}
 
-- (void) _nextDemo
-{
+- (void) nextDemo{
     _activeDemo = (_activeDemo + 1) % m_Properties.mnDemos;
-    
-    [self _reset];
-    
+    [self reset];
     _preferences.demoType = _activeDemo;
-} // _nextDemo
+}
 
-- (void) _swapVisualizer
-{
+- (void) swapVisualizer {
     [self draw];
     
     mbIsWaiting = YES;
     
     mpVisualizer->reset(_activeDemo);
-} // _swapVisualizer
+}
 
-- (void) _swapSimulators
-{
+- (void) swapSimulators {
     [self draw];
     
-    [self _nextSimulator];
+    [self nextSimulator];
     
     mpVisualizer->reset(_activeDemo);
 
     // Reset the target values of meters
     [mpMeters reset];
-} // _swapSimulators
+}
 
-- (void) _swapInterval:(const BOOL)doSync
-{
+- (void) swapInterval:(const BOOL)doSync {
     CGLContextObj pContext = CGLGetCurrentContext();
     
-    if(pContext != nullptr)
-    {
+    if(pContext != nullptr){
         const GLint sync = GLint(doSync);
-        
         CGLSetParameter(pContext,
                         kCGLCPSwapInterval,
                         &sync);
-    } // if
-} // _swapInterval
+    }
+}
 
 - (void) _drawScene
 {
@@ -182,7 +169,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
 {
     _activeDemo = activeDemo;
     
-    [self _reset];
+    [self reset];
     
     _preferences.demoType = _activeDemo;
 } // _setDemo
@@ -548,7 +535,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
 
 - (BOOL) acquire
 {
-    [self _swapInterval:YES];
+    [self swapInterval:YES];
     
     return [self _newVisualizer];
 } // acquire
@@ -729,7 +716,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
             
         case 'n':
         {
-            [self _nextDemo];
+            [self nextDemo];
             
             break;
         }
@@ -750,7 +737,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
             
         case 'R':
         {
-            [self _restart];
+            [self restart];
             
             break;
         }
@@ -771,7 +758,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
             
         case 'z':
         {
-            [self _reset];
+            [self reset];
             
             break;
         }
