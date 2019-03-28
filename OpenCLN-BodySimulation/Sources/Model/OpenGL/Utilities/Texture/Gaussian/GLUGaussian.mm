@@ -154,7 +154,7 @@ GLU::Gaussian::~Gaussian()
     } // if
 } // Destructor
 
-GLU::Gaussian::Gaussian(const GLU::Gaussian::Gaussian& rTexture)
+GLU::Gaussian::Gaussian(const GLU::Gaussian& rTexture)
 {
     mnTarget  = GL_TEXTURE_2D;
     mnTexRes  = (rTexture.mnTexRes) ? rTexture.mnTexRes : 64;

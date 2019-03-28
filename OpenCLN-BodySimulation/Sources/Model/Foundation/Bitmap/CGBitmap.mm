@@ -132,7 +132,7 @@ Bitmap::Bitmap(CFStringRef pName,
     } // if
 } // Constructor
 
-Bitmap::Bitmap(const Bitmap::Bitmap& rBitmap)
+Bitmap::Bitmap(const Bitmap& rBitmap)
 {
     mpContext = CGBitmapCreateCopy(rBitmap.mpContext);
     

@@ -62,7 +62,7 @@ Timer::Timer(const size_t& size,
     m_Vector = 0.0f;
 } // Constructor
 
-Timer::Timer(const Timer::Timer& timer)
+Timer::Timer(const Timer& timer)
 {
     mnAspect   = timer.mnAspect;
     mnScale    = timer.mnScale;

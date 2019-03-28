@@ -117,7 +117,7 @@ GLU::Texture::~Texture()
     } // if
 } // Destructor
 
-GLU::Texture::Texture(const GLU::Texture::Texture& rTexture)
+GLU::Texture::Texture(const GLU::Texture& rTexture)
 {
     mnTarget  = rTexture.mnTarget;
     mbMipmaps = rTexture.mbMipmaps;

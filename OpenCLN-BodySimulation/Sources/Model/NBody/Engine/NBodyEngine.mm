@@ -744,7 +744,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
             
         case 's':
         {
-            [self _swapSimulators];
+            [self swapSimulators];
             
             break;
         }
