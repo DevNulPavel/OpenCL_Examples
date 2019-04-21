@@ -26,8 +26,8 @@
 
 // Размер данных
 #define DATA_SIZE ((1024*1024/sizeof(float)) * 256) // in Mb
-#define CPU_TEST_COUNT 10
-#define GPU_TEST_COUNT 30
+#define CPU_TEST_COUNT 5
+#define GPU_TEST_COUNT 10
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
     }
     
     // Выводим инфу по GPU
-    printf("Computed using OpenCL for %f, '%ld/%ld' correct values, ok = %s!\n", totalGPUTime/(double)GPU_TEST_COUNT, correct, DATA_SIZE, (correct == DATA_SIZE) ? "true" : "false");
+    printf("Computed using OpenCL for %f, '%ld/%ld' correct values, ok = %s!\n", (double)totalGPUTime/(double)GPU_TEST_COUNT, correct, DATA_SIZE, (correct == DATA_SIZE) ? "true" : "false");
 
     // Чистим память
     clReleaseMemObject(input);
@@ -293,9 +293,9 @@ int main(int argc, char** argv) {
     }
     
     // Выводим инфу по CPU
-    printf("Computed using CPU for %f\n", totalCPUTime/(double)CPU_TEST_COUNT);
+    printf("Computed using CPU for %f\n", (double)totalCPUTime/(double)CPU_TEST_COUNT);
     
-    printf("GPU faster then CPU in X%f times \n", (float)(totalCPUTime/totalGPUTime));
+    printf("GPU faster then CPU in X%f times \n", (float)((float)(totalCPUTime/(float)CPU_TEST_COUNT)/((float)totalGPUTime/(float)GPU_TEST_COUNT)));
     
     free(results);
     free(data);
