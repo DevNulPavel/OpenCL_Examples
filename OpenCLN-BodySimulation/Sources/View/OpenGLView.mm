@@ -288,10 +288,10 @@ static const NSOpenGLPixelFormatAttribute kOpenGLAttribsLegacyDefault[4] =
 
 #pragma mark - Public - Updates
 
-- (void) renewGState{
-    [super renewGState];
-    [[self window] disableScreenUpdatesUntilFlush];
-}
+//- (void) renewGState{
+//    [super renewGState];
+//    [[self window] disableScreenUpdatesUntilFlush];
+//}
 
 #pragma mark - Public - Display
 
@@ -304,6 +304,7 @@ static const NSOpenGLPixelFormatAttribute kOpenGLAttribsLegacyDefault[4] =
 }
 
 - (void) reshape {
+    [super reshape];
     [self resize];
 }
 

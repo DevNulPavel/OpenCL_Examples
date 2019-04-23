@@ -624,7 +624,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
         &&  (pos.x >= (wmax - wmin))
         &&  (pos.x <= (wmax + wmin)))
     {
-        [self _swapSimulators];
+        [self swapSimulators];
     } // if
 } // click
 
@@ -702,7 +702,7 @@ static const size_t kMeterDefaultMaxCPUUsage = 100;
             
         case 'g':
         {
-            [self _swapVisualizer];
+            [self swapVisualizer];
             
             break;
         }
