@@ -4,6 +4,8 @@
 cmake_minimum_required( VERSION 2.8 )
 project( OpenCL_By_Example )
 
+add_definitions(-DCL_SILENCE_DEPRECATION)
+
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} )
 if ( MSVC_IDE )
     set( CMAKE_CXX_FLAGS "-DWIN32" )
