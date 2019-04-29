@@ -9,7 +9,7 @@
 
 
 const bool USE_CPU = true;
-const uint32_t samplesCount = 2;
+const uint32_t samplesCount = 128;
 const int32_t width = 600;
 const int32_t height = 600;
 const size_t pixelCount = (size_t)width * (size_t)height;
@@ -211,38 +211,41 @@ int main(){
         fprintf(stderr, "Failed to create OpenCL random buffer: %d\n", err);
         exit(-1);
     }
+
+    // Ивенты окончания записи
+    cl_event writeCompleteEvents[2];
     
     // Буфер с данными о сферах
-    cl_mem sphereBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Sphere) * (size_t)sphereCount, NULL, &err);
+    cl_mem sphereBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Sphere) * (size_t)sphereCount, spheres, &err);
     if (err != CL_SUCCESS) {
         fprintf(stderr, "Failed to create OpenCL scene buffer: %d\n", err);
         exit(-1);
     }
     
-    // Копируем данные о сферах в буфер в синхронном режиме
+    /*// Копируем данные о сферах в буфер в синхронном режиме
     err = clEnqueueWriteBuffer(commandQueue, sphereBuffer, CL_TRUE, 0,
                                sizeof(Sphere) * (size_t)sphereCount, spheres,
-                               0, NULL, NULL);
+                               0, NULL, &(writeCompleteEvents[0]));
     if (err != CL_SUCCESS) {
         fprintf(stderr, "Failed to write the OpenCL scene Sphere buffer: %d\n", err);
         exit(-1);
-    }
+    }*/
     
     // Создание буфера с треугольниками
-    cl_mem triangleBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(Triangle) * (size_t)triangleCount, NULL, &err);
+    cl_mem triangleBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Triangle) * (size_t)triangleCount, triag, &err);
     if (err != CL_SUCCESS) {
         fprintf(stderr, "Failed to create OpenCL scene Triangle buffer: %d\n", err);
         exit(-1);
     }
     
-    // Записываем даннные о треугольниках синхронно на устройство
+    /*// Записываем даннные о треугольниках синхронно на устройство
     err = clEnqueueWriteBuffer(commandQueue, triangleBuffer, CL_TRUE, 0,
                                sizeof(Triangle) * (size_t)triangleCount, triag,
-                               0, NULL, NULL);
+                               0, NULL, &(writeCompleteEvents[1]));
     if (err != CL_SUCCESS) {
         fprintf(stderr, "Failed to write the OpenCL scene Triangle buffer: %d\n", err);
         exit(-1);
-    }
+    }*/
     
     // Устанавливаем данные аргументов вычислительного ядра
     {
@@ -318,18 +321,18 @@ int main(){
                            0,                       // Нулевое смещение по данным
                            &work_units_per_kernel,  // Глобальное количество работы
                            &workGroupSize,          // Дефолтный размер вычислительной группы
-                           0,                       // Нет ивентов которых нужно ждать
-                           NULL,                    // Нет ивентов которых нужно ждать
+                           0,                       // Ивенты окончания записи которые ждем
+                           NULL,                    // Ивенты окончания записи которые ждем (writeCompleteEvents)
                            &completeEvent);         // Ивент окончания вычислений
  
     // Получаем данные из устройства в синхронном режиме
     clEnqueueReadBuffer(commandQueue, colorBuffer, CL_TRUE, 0, sizeof(cl_float3)*pixelCount, colors, 1, &completeEvent, NULL);
     
     // Данные о времени вычисления
-    std::cout<< " "<<std::endl;
+    std::cout << " "<<std::endl;
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout<< "Computation Time: "<<std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() <<" ms"<<std::endl;
-    std::cout<< "Writing to file " << std::endl;
+    std::cout << "Computation Time: "<<std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() <<" ms"<<std::endl;
+    std::cout << "Writing to file " << std::endl;
 
     // Сохраняем данные в файл
     FILE* f = fopen("result_image.ppm", "w");         // Write image to PPM file.   // YOUR PATH TO IMAGE

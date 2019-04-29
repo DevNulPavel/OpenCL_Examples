@@ -78,26 +78,25 @@ return dot(edge2, qvec) * inv_det;
                             /*  Random function */
 /* ------------------------------------------------------------------------------------------- */
  float GetRandom(unsigned int *seed0, unsigned int *seed1) {
- *seed0 = 36969 * ((*seed0) & 65535) + ((*seed0) >> 16);
- *seed1 = 18000 * ((*seed1) & 65535) + ((*seed1) >> 16);
- 
- unsigned int ires = ((*seed0) << 16) + (*seed1);
- 
- 
- union {
- float f;
- unsigned int ui;
- } res;
- res.ui = (ires & 0x007fffff) | 0x40000000;
- 
- return (res.f - 2.f) / 2.f;
+     *seed0 = 36969 * ((*seed0) & 65535) + ((*seed0) >> 16);
+     *seed1 = 18000 * ((*seed1) & 65535) + ((*seed1) >> 16);
+     
+     unsigned int ires = ((*seed0) << 16) + (*seed1);
+     
+     union {
+        float f;
+        unsigned int ui;
+     } res;
+     res.ui = (ires & 0x007fffff) | 0x40000000;
+     
+     return (res.f - 2.0) / 2.0;
  }
  
 
 /* ------------------------------------------------------------------------------------------- */
                         /* Main Radiance function */
 /* ------------------------------------------------------------------------------------------- */
-float3 radiance(Ray r,
+float3 radiance(Ray inputRay,
                 __constant Sphere *spheres,
                 __constant Triangle *triag,
                 const int spheresCount,
@@ -105,46 +104,49 @@ float3 radiance(Ray r,
                 unsigned int* seed0,
                 unsigned int* seed1){
     
+    Ray r = inputRay;
     unsigned int depth = 0;
     float3 color = {0.0, 0.0, 0.0}; // Базовый цвет
-    float3 cf = {1.0, 1.0, 1.0};
+    float3 currentColor = {1.0, 1.0, 1.0};
 
     /* For recursion */
     while(1){
         /* Check ray-primitive intersection */
-        float intersectDist = 0;                                // distance to intersection
+        float intersectDist = 1e20;
+        const float inf = 1e20;                                // distance to intersection
         int id = 0;                               // id of intersected object
-        int idx = 0;
-        float distanceToSphere, dispanceToTriangle, inf = intersectDist = 1e20;
+        int intersectionType = 0;
+        float distanceToSphere = 0;
+        float dispanceToTriangle = 0;
 
         int idSphere = 0;
         int idTriangle = 0;
-        float tt = inf;
-        float ts = inf;
+        float lastDistToTriangle = inf;
+        float lastDistToSphere = inf;
 
         for(int i = spheresCount; i--;){
             distanceToSphere = RaySphereIntersect(r, spheres[i]);
-            if(distanceToSphere && (distanceToSphere < ts)){
-                ts = distanceToSphere;
+            if(distanceToSphere && (distanceToSphere < lastDistToSphere)){
+                lastDistToSphere = distanceToSphere;
                 idSphere = i;
             }
         }
         for(int i = trianglesCount; i--;) {
             dispanceToTriangle = RayTriangleIntersect(r, triag[i]);
-            if(dispanceToTriangle && (dispanceToTriangle < tt)){
-                tt = dispanceToTriangle;
+            if(dispanceToTriangle && (dispanceToTriangle < lastDistToTriangle)){
+                lastDistToTriangle = dispanceToTriangle;
                 idTriangle = i;
             }
         }
-        if(ts < intersectDist && ts < tt){
+        if(lastDistToSphere < intersectDist && lastDistToSphere < lastDistToTriangle){
             id = idSphere;
-            intersectDist = ts;
-            idx=1;
+            intersectDist = lastDistToSphere;
+            intersectionType = 1;
         }
-        if( tt < intersectDist && tt<ts) {
+        if( lastDistToTriangle < intersectDist && lastDistToTriangle < lastDistToSphere) {
             id = idTriangle;
-            intersectDist = tt;
-            idx=2;
+            intersectDist = lastDistToTriangle;
+            intersectionType = 2;
         }
         
         // Если нет пересечения - возвращаем черный цвет
@@ -154,271 +156,288 @@ float3 radiance(Ray r,
     
         /* -------------* Intersection happened *------------------*/
       
-        if (idx == 1) {
-            // TODO: Test code
-            //return float3(0.0, 1.0, 1.0); // if miss, return black
-            
+        if (intersectionType == 1) {
+            // Столкновение со сферой
             const Sphere obj = spheres[id];        // the hit object
-     
-             float3 x;
-             
-             float3 rdir;
-             rdir.x = r.d.x * intersectDist;
-             rdir.y = r.d.y * intersectDist;
-             rdir.z = r.d.z * intersectDist;
+            
+            // TODO: Test code
+            //return obj.c;
+            
+            float3 rdir;
+            rdir.x = r.d.x * intersectDist;
+            rdir.y = r.d.y * intersectDist;
+            rdir.z = r.d.z * intersectDist;
 
-             x= r.o + rdir;
-             float3 n = (x - obj.p);
-             n=normalize(n);
-             float3 nl = dot(r.d,n);
-             if (nl.x>=0 && nl.y>=0 && nl.z>0) n=-n;
-             float3 f=obj.c;
-             
-             
-             float p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
-             color = color + cf*obj.e;
-             
-             
-             if (++depth>5)
-                 if (GetRandom(seed0,seed1)<p) f=f*(1/p);
-                 else return color;
-             cf=cf*f;
+            float3 x = r.o + rdir;
+            float3 n = (x - obj.p);
+            n = normalize(n);
+            float3 nl = dot(r.d,n);
+            if (nl.x>=0 && nl.y>=0 && nl.z>0){
+                n=-n;
+            }
+            float3 f=obj.c;
+            
+            float p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
+            color = color + currentColor * obj.e;
+            
+            if (++depth > 5){
+                if (GetRandom(seed0,seed1)<p) {
+                    f=f*(1/p);
+                }else {
+                    // TODO: Test code
+                    return float3(1.0, 0.0, 0.0); // if miss, return black
+                    return color;
+                }
+            }
+            currentColor = currentColor*f;
            
-            if(obj.refl == 0)
-            {
-             float r1 = 2.0f * 3.14159265358979323846f * GetRandom(seed0, seed1);
-             float r2 = GetRandom(seed0, seed1);
-             float r2s = sqrt(r2);
-             
-             float3 w; {(w).x = (nl).x; (w).y = (nl).y; (w).z = (nl).z; };
-             
-             float3 u, a;
-             if (fabs(w.x) > 0.1f) {
-                 { (a).x = 0.0f; (a).y = 1.0f; (a).z = 0.0f; };
-                 u=a;
-             } else {
-                 { (a).x = 1.0f; (a).y = 0.0f; (a).z = 0.0f; };
-                 a = cross(a,w);
-                 u=a;
+            if(obj.refl == 0) {
+                 float r1 = 2.0f * 3.14159265358979323846f * GetRandom(seed0, seed1);
+                 float r2 = GetRandom(seed0, seed1);
+                 float r2s = sqrt(r2);
+                
+                 float3 w; {(w).x = (nl).x; (w).y = (nl).y; (w).z = (nl).z; };
+                
+                 float3 u, a;
+                 if (fabs(w.x) > 0.1f) {
+                     { (a).x = 0.0f; (a).y = 1.0f; (a).z = 0.0f; };
+                     u=a;
+                 } else {
+                     { (a).x = 1.0f; (a).y = 0.0f; (a).z = 0.0f; };
+                     a = cross(a,w);
+                     u=a;
+                 }
+                 u=normalize(u);
+                 float3 v;
+                 v= cross(w,u);
+                
+                 float3 d;
+                 float temp1 = cos(r1)*r2s;
+                 float temp2 = sin(r1)*r2s;
+                 float temp3 = sqrt(1-r2);
+                
+                 d.x = u.x * temp1 + v.x * temp2 + w.x * temp3;
+                 d.y = u.y * temp1 + v.y * temp2 + w.y * temp3;
+                 d.z = u.z * temp1 + v.z * temp2 + w.z * temp3;
+                
+                 d=normalize(d);
+                
+                 r.o = x;
+                 r.d = d;
+                
+                
+                 continue;
              }
-             u=normalize(u);
-             float3 v;
-             v= cross(w,u);
+             else if(obj.refl == 1)
+             {
+                 r.o = x;
+                 float3 d;
+                 d= r.d;
+                 float ref=2.0 * dot(r.d,n);
+                 float3 tempV;
+                 tempV.x = n.x * ref;
+                 tempV.y = n.y * ref;
+                 tempV.z = n.z * ref;
+                 d = r.d - tempV;
+                 r.d = d;
+                 
+                 continue;
+             }
              
-             float3 d;
-             float temp1 = cos(r1)*r2s;
-             float temp2 = sin(r1)*r2s;
-             float temp3 = sqrt(1-r2);
-             
-             d.x = u.x * temp1 + v.x * temp2 + w.x * temp3;
-             d.y = u.y * temp1 + v.y * temp2 + w.y * temp3;
-             d.z = u.z * temp1 + v.z * temp2 + w.z * temp3;
-             
-             d=normalize(d);
-             
-             r.o = x;
-             r.d = d;
-             
-             
-             continue;
-         }
-        
-         else if(obj.refl == 1)
-         {
-             r.o = x;
-             float3 d;
-             d= r.d;
+             // Ideal dielectric REFRACTION
+             Ray reflRay;
+             reflRay.o = x;
+             float3 d = r.d;
              float ref=2.0 * dot(r.d,n);
              float3 tempV;
              tempV.x = n.x * ref;
              tempV.y = n.y * ref;
              tempV.z = n.z * ref;
              d = r.d - tempV;
-             r.d = d;
-             
+             reflRay.d = d;
+             // Ray from outside going in?
+             bool into = dot(n,nl) > 0;
+             float nc=1.0, nt = 1.5, nnt=into?nc/nt:nt/nc, ddn =dot(r.d,nl), cos2t;
+             // Total internal reflection
+             if ((cos2t=1.0-nnt*nnt*(1.0-ddn*ddn))<0)
+             {    // Total internal reflection
+                 //return obj.e + f.mult(radiance(reflRay,depth,Xi));
+                 r=reflRay;
+                 continue;
+             }
+         
+             float3  tdir;
+             tdir.x = r.d.x * nnt - n.x* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
+             tdir.y = r.d.y * nnt - n.y* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
+             tdir.z = r.d.z * nnt - n.z* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
+             tdir=normalize(tdir);
+             float a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1.0 - (into?-ddn: dot(n,tdir));
+             float Re=R0+(1.0 - R0) * c * c * c * c *c, Tr=1-Re, P=0.25+0.5 *Re, RP=Re/P, TP=Tr/(1.0-P);
+            
+            
+             if (GetRandom(seed0, seed1)<P)
+             {
+                 currentColor=currentColor*RP;
+                 r = reflRay;
+             }
+             else
+             {
+                 
+                 currentColor=currentColor*TP;
+                 r.o = x;
+                 r.d = tdir;
+             }
              continue;
-         }
              
-         // Ideal dielectric REFRACTION
-         Ray reflRay;
-         reflRay.o = x;
-         float3 d = r.d;
-         float ref=2.0 * dot(r.d,n);
-         float3 tempV;
-         tempV.x = n.x * ref;
-         tempV.y = n.y * ref;
-         tempV.z = n.z * ref;
-         d = r.d - tempV;
-         reflRay.d = d;
-         // Ray from outside going in?
-         bool into = dot(n,nl) > 0;
-         float nc=1.0, nt = 1.5, nnt=into?nc/nt:nt/nc, ddn =dot(r.d,nl), cos2t;
-         // Total internal reflection
-         if ((cos2t=1.0-nnt*nnt*(1.0-ddn*ddn))<0)
-         {    // Total internal reflection
-             //return obj.e + f.mult(radiance(reflRay,depth,Xi));
-             r=reflRay;
-             continue;
-         }
+            // TODO: Test code
+            //return float3(1.0, 0.0, 1.0);
+        }
+        else {
+            // Столкновение с треугольником
+            
+            // TODO: Test code
+            //return float3(1.0, 0.0, 1.0); // if miss, return black
+
+            const Triangle obj = triag[id];
+            
+            // TODO: Test code
+            //return obj.Color;
+
+            float3 rayVector;
+            rayVector.x = r.d.x * intersectDist;
+            rayVector.y = r.d.y * intersectDist;
+            rayVector.z = r.d.z * intersectDist;
+            
+            // Вычисляем нормаль
+            float3 x = r.o + rayVector;
+            float3 n = cross(triag[id].Vertex[1] - triag[id].Vertex[0], triag[id].Vertex[2]-triag[id].Vertex[0]);
+            n = normalize(n);
+            float3 nl = dot(r.d,n);
+            if (nl.x >= 0 && nl.y >= 0 && nl.z > 0) {
+                n =- n;
+            }
+            
+            // TODO: Test code
+            //return n;
+            
+            float3 triangleColor = obj.Color;
+            
+            // TODO: Test code
+            //return obj.Color;
+            
+            float p = triangleColor.x > triangleColor.y && triangleColor.x>triangleColor.z ? triangleColor.x : triangleColor.y>triangleColor.z ? triangleColor.y : triangleColor.z; // max refl
+            color = color + currentColor*obj.e;
+            
+            if (++depth > 3){
+                if (GetRandom(seed0, seed1) < p) {
+                    triangleColor = triangleColor*(1/p);
+                }else{
+                    return color;
+                }
+                
+                // TODO: Test code
+                //return color;
+            }
+            currentColor = currentColor * triangleColor;
+            
+            // TODO: Test code
+            //return currentColor;
+            //return triangleColor;
          
-         float3  tdir;
-         tdir.x = r.d.x * nnt - n.x* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
-         tdir.y = r.d.y * nnt - n.y* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
-         tdir.z = r.d.z * nnt - n.z* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
-         tdir=normalize(tdir);
-         float a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1.0 - (into?-ddn: dot(n,tdir));
-         float Re=R0+(1.0 - R0) * c * c * c * c *c, Tr=1-Re, P=0.25+0.5 *Re, RP=Re/P, TP=Tr/(1.0-P);
-         
-         
-         if (GetRandom(seed0, seed1)<P)
-         {
-             cf=cf*RP;
-             r = reflRay;
-         }
-         else
-         {
-             
-             cf=cf*TP;
-             r.o = x;
-             r.d = tdir;
-         }
-         continue;
-         
+            if(obj.refl == 0) {
+                float r1 = 2.0f * 3.14159265358979323846f * GetRandom(seed0, seed1);
+                float r2 = GetRandom(seed0, seed1);
+                float r2s = sqrt(r2);
+
+                float3 w; {(w).x = (nl).x; (w).y = (nl).y; (w).z = (nl).z; };
+
+                float3 u, a;
+                if (fabs(w.x) > 0.1f) {
+                    { (a).x = 0.0f; (a).y = 1.0f; (a).z = 0.0f; };
+                    u=a;
+                } else {
+                    { (a).x = 1.0f; (a).y = 0.0f; (a).z = 0.0f; };
+                    a = cross(a,w);
+                    u=a;
+                }
+                u = normalize(u);
+                float3 v;
+                v = cross(w,u);
+
+                float3 d;
+                float temp1 = cos(r1)*r2s;
+                float temp2 = sin(r1)*r2s;
+                float temp3 = sqrt(1-r2);
+
+                d.x = u.x * temp1 + v.x * temp2 + w.x * temp3;
+                d.y = u.y * temp1 + v.y * temp2 + w.y * temp3;
+                d.z = u.z * temp1 + v.z * temp2 + w.z * temp3;
+
+                d=normalize(d);
+
+                r.o = x;
+                r.d = d;
+
+                continue;
+             }else if(obj.refl == 1) {
+                 r.o = x;
+                 float3 d;
+                 d= r.d;
+                 float ref=2.0 * dot(r.d,n);
+                 float3 tempV;
+                 tempV.x = n.x * ref;
+                 tempV.y = n.y * ref;
+                 tempV.z = n.z * ref;
+                 d = r.d - tempV;
+                 r.d = d;
+
+                 continue;
+             }else if(obj.refl == 2){
+                 // Ideal dielectric REFRACTION
+                 Ray reflRay;
+                 reflRay.o = x;
+                 float3 d = r.d;
+                 float ref=2.0 * dot(r.d,n);
+                 float3 tempV;
+                 tempV.x = n.x * ref;
+                 tempV.y = n.y * ref;
+                 tempV.z = n.z * ref;
+                 d = r.d - tempV;
+                 reflRay.d = d;
+                 // Ray from outside going in?
+                 bool into = dot(n,nl) > 0;
+                 float nc=1.0, nt = 1.5, nnt=into?nc/nt:nt/nc, ddn =dot(r.d,nl), cos2t;
+                 // Total internal reflection
+                 if ((cos2t=1.0-nnt*nnt*(1.0-ddn*ddn))<0) {
+                     // Total internal reflection
+                     // TODO: For test
+                     //return obj.e + f.mult(radiance(reflRay,depth,Xi));
+                     
+                     r=reflRay;
+                     continue;
+                 }
+                  
+                  float3  tdir;
+                  tdir.x = r.d.x * nnt - n.x* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
+                  tdir.y = r.d.y * nnt - n.y* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
+                  tdir.z = r.d.z * nnt - n.z* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
+                  tdir = normalize(tdir);
+                  float a = nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1.0 - (into?-ddn: dot(n,tdir));
+                  float Re = R0+(1.0 - R0) * c * c * c * c *c, Tr=1-Re, P=0.25+0.5 *Re, RP=Re/P, TP=Tr/(1.0-P);
+                  
+                  if (GetRandom(seed0, seed1)<P){
+                      currentColor=currentColor*RP;
+                      r = reflRay;
+                  } else {
+                      currentColor=currentColor*TP;
+                      r.o = x;
+                      r.d = tdir;
+                  }
+             }
+
+            continue;
+        }
     }
-     else
-     {
-         // TODO: Test code
-         //return float3(1.0, 0.0, 1.0); // if miss, return black
-         
-         const Triangle obj = triag[id];
-         float3 x;
-         
-         float3 rdir;
-         rdir.x = r.d.x * intersectDist;
-         rdir.y = r.d.y * intersectDist;
-         rdir.z = r.d.z * intersectDist;
-         
-         x= r.o + rdir;
-         float3 n = cross(triag[id].Vertex[1] - triag[id].Vertex[0],triag[id].Vertex[2]-triag[id].Vertex[0]);
-         n=normalize(n);
-         float3 nl = dot(r.d,n);
-         if (nl.x>=0 && nl.y>=0 && nl.z>0) n=-n;
-         float3 f=obj.Color;
-         
-         
-         float p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
-         color = color + cf*obj.e;
-         
-         
-         if (++depth>5)
-             if (GetRandom(seed0,seed1)<p) f=f*(1/p);
-             else return color;
-         cf=cf*f;
-         
-         if(obj.refl == 0)
-         {
-             float r1 = 2.0f * 3.14159265358979323846f * GetRandom(seed0, seed1);
-             float r2 = GetRandom(seed0, seed1);
-             float r2s = sqrt(r2);
-             
-             float3 w; {(w).x = (nl).x; (w).y = (nl).y; (w).z = (nl).z; };
-             
-             float3 u, a;
-             if (fabs(w.x) > 0.1f) {
-                 { (a).x = 0.0f; (a).y = 1.0f; (a).z = 0.0f; };
-                 u=a;
-             } else {
-                 { (a).x = 1.0f; (a).y = 0.0f; (a).z = 0.0f; };
-                 a = cross(a,w);
-                 u=a;
-             }
-             u=normalize(u);
-             float3 v;
-             v= cross(w,u);
-             
-             float3 d;
-             float temp1 = cos(r1)*r2s;
-             float temp2 = sin(r1)*r2s;
-             float temp3 = sqrt(1-r2);
-             
-             d.x = u.x * temp1 + v.x * temp2 + w.x * temp3;
-             d.y = u.y * temp1 + v.y * temp2 + w.y * temp3;
-             d.z = u.z * temp1 + v.z * temp2 + w.z * temp3;
-             
-             d=normalize(d);
-             
-             r.o = x;
-             r.d = d;
-             
-             
-             continue;
-             
-             
-         }
-         
-         else if(obj.refl == 1)
-         {
-             r.o = x;
-             float3 d;
-             d= r.d;
-             float ref=2.0 * dot(r.d,n);
-             float3 tempV;
-             tempV.x = n.x * ref;
-             tempV.y = n.y * ref;
-             tempV.z = n.z * ref;
-             d = r.d - tempV;
-             r.d = d;
-             
-             continue;
-         }
-         // Ideal dielectric REFRACTION
-         Ray reflRay;
-         reflRay.o = x;
-         float3 d = r.d;
-         float ref=2.0 * dot(r.d,n);
-         float3 tempV;
-         tempV.x = n.x * ref;
-         tempV.y = n.y * ref;
-         tempV.z = n.z * ref;
-         d = r.d - tempV;
-         reflRay.d = d;
-         // Ray from outside going in?
-         bool into = dot(n,nl) > 0;
-         float nc=1.0, nt = 1.5, nnt=into?nc/nt:nt/nc, ddn =dot(r.d,nl), cos2t;
-         // Total internal reflection
-         if ((cos2t=1.0-nnt*nnt*(1.0-ddn*ddn))<0)
-         {    // Total internal reflection
-             //return obj.e + f.mult(radiance(reflRay,depth,Xi));
-             r=reflRay;
-             continue;
-         }
-         
-         float3  tdir;
-         tdir.x = r.d.x * nnt - n.x* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
-         tdir.y = r.d.y * nnt - n.y* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
-         tdir.z = r.d.z * nnt - n.z* ((into?1.0:-1.0)* ddn*nnt+sqrt(cos2t));
-         tdir=normalize(tdir);
-         float a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1.0 - (into?-ddn: dot(n,tdir));
-         float Re=R0+(1.0 - R0) * c * c * c * c *c, Tr=1-Re, P=0.25+0.5 *Re, RP=Re/P, TP=Tr/(1.0-P);
-         
-         
-         if (GetRandom(seed0, seed1)<P)
-         {
-             cf=cf*RP;
-             r = reflRay;
-         }
-         else
-         {
-             
-             cf=cf*TP;
-             r.o = x;
-             r.d = tdir;
-         }
-         continue;
-         
-        
-     }
- }
 }
 
 /* ------------------------------------------------------------------------------------------- */

@@ -18,8 +18,9 @@
 
 
 Sphere  spheres[]={
-    Sphere(16.5,setVec(27,16.5,47),setVec(0.0) ,setVec(0.999,0.999,0.999), 1),//Mirr
-    Sphere(12.5,setVec(73,10.5,120),setVec(0.0),setVec(0.999,0.999,0.999), 2)//Glas
+    Sphere(16.5,setVec(27,16.5,47),setVec(0.0) ,setVec(0.999,0.999,0.999), 1), //Mirr
+    Sphere(12.5,setVec(73,10.5,120),setVec(0.0),setVec(0.999,0.999,0.999), 2), //Glas
+    Sphere(12.5,setVec(73,13.5,160),setVec(0.0),setVec(0.999,0.999,0.999), 3) //Refract
 };
 
 
@@ -150,15 +151,15 @@ Triangle triag[] = {
     Triangle(Vertex22, setVec(0),setVec(.75,.75,.75),0),
     
     /* Top */
-    Triangle(Vertex23, setVec(0),setVec(.75,.75,.75),0),
-    Triangle(Vertex24, setVec(0),setVec(.75,.75,.75),0),
+    Triangle(Vertex23, setVec(0),setVec(.75,.75,.75),1),
+    Triangle(Vertex24, setVec(0),setVec(.75,.75,.75),1),
     /* Left */
     Triangle(Vertex25, setVec(0),setVec(.75,.25,.25),0),
     Triangle(Vertex26, setVec(0),setVec(.75,.25,.25),0),
     
     /*Right*/
-    Triangle(Vertex27, setVec(0),setVec(.25,.25,.75),0),
-    Triangle(Vertex28, setVec(0),setVec(.25,.25,.75),0),
+    Triangle(Vertex27, setVec(0),setVec(.25,.25,.75),1),
+    Triangle(Vertex28, setVec(0),setVec(.25,.25,.75),1),
     
     /* Cube */
     Triangle(Vertex29, setVec(0),setVec(0.4,0.0,0.8),0),
