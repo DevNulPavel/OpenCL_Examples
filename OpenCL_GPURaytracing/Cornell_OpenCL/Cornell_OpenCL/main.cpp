@@ -9,7 +9,7 @@
 
 
 const bool USE_CPU = true;
-const uint32_t samplesCount = 128;
+const uint32_t samplesCount = 2;
 const int32_t width = 600;
 const int32_t height = 600;
 const size_t pixelCount = (size_t)width * (size_t)height;
